@@ -1,7 +1,7 @@
 rgc
 ===
 These files implement the methods described in the paper
-U. Sümbül et al., ``A genetic and computational approach to structural classification of neuronal types,'' Nature Communications, 2014.
+U. Sümbül et al., ``A genetic and computational approach to structurally classify neuronal types,'' Nature Communications, 2014.
 
 These files are authored and maintained by Uygar Sümbül unless otherwise noted. 
 
