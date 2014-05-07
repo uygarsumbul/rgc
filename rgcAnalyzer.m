@@ -122,7 +122,7 @@ xMax = max(x); yMax = max(y);
 [zgrid,xgrid,ygrid] = gridfit(x,y,z,[[1:3:xMax-1] xMax],[[1:3:yMax-1] yMax],'smoothness',1);
 % linearly (fast) interpolate to fine grid
 [xi,yi]=meshgrid(1:xMax,1:yMax); xi = xi'; yi = yi';
-vzmesh=interp2(xgrid,ygrid,zgrid,xi,yi,'*linear',mean(zgrid));
+vzmesh=interp2(xgrid,ygrid,zgrid,xi,yi,'*linear',mean(zgrid(:)));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function surfaceMapping = calcWarpedSACsurfaces(thisVZminmesh,thisVZmaxmesh,arborBoundaries,conformalJump)
@@ -157,19 +157,17 @@ if N >= M
   yKnots = interp2(ymesh,xmesh,ymesh, ypos, [xpos(1):(xpos(end)-xpos(1))/(N-1):xpos(end)]');
   zKnotsMainDiag = griddata(xmesh(:),ymesh(:),VZmesh(:), [xpos(1):(xpos(end)-xpos(1))/(N-1):xpos(end)]', ypos');
   zKnotsSkewDiag = griddata(xmesh(:),ymesh(:),VZmesh(:), [xpos(1):(xpos(end)-xpos(1))/(N-1):xpos(end)]', ypos(end:-1:1)');
-  for kk = 1:N-1
-    mainDiagDist = mainDiagDist + sqrt((xKnots(kk,kk)-xKnots(kk+1,kk+1))^2 + (yKnots(kk,kk)-yKnots(kk+1,kk+1))^2 + (zKnotsMainDiag(kk)-zKnotsMainDiag(kk+1))^2);
-    skewDiagDist = skewDiagDist + sqrt((xKnots(kk,N+1-kk)-xKnots(kk+1,N-kk))^2 + (yKnots(kk,N+1-kk)-yKnots(kk+1,N-kk))^2 + (zKnotsSkewDiag(kk)-zKnotsSkewDiag(kk+1))^2);
-  end
+  dxKnots = diag(xKnots); dyKnots = diag(yKnots); mainDiagDist = sum(sqrt(diff(dxKnots).^2 + diff(dyKnots).^2 + diff(zKnotsMainDiag).^2));
+  sdxKnots = xKnots(N:N-1:end-1)'; sdyKnots = yKnots(N:N-1:end-1)'; skewDiagDist = sum(sqrt(diff(sdxKnots).^2 + diff(sdyKnots).^2 + diff(zKnotsSkewDiag).^2));
+
 else
   xKnots = interp2(ymesh,xmesh,xmesh, [ypos(1):(ypos(end)-ypos(1))/(M-1):ypos(end)], xpos');
   yKnots = interp2(ymesh,xmesh,ymesh, [ypos(1):(ypos(end)-ypos(1))/(M-1):ypos(end)], xpos');
   zKnotsMainDiag = griddata(xmesh(:),ymesh(:),VZmesh(:), xpos', [ypos(1):(ypos(end)-ypos(1))/(M-1):ypos(end)]');
   zKnotsSkewDiag = griddata(xmesh(:),ymesh(:),VZmesh(:), xpos', [ypos(end):-(ypos(end)-ypos(1))/(M-1):ypos(1)]');
-  for kk = 1:M-1
-    mainDiagDist = mainDiagDist + sqrt((xKnots(kk,kk)-xKnots(kk+1,kk+1))^2 + (yKnots(kk,kk)-yKnots(kk+1,kk+1))^2 + (zKnotsMainDiag(kk)-zKnotsMainDiag(kk+1))^2);
-    skewDiagDist = skewDiagDist + sqrt((xKnots(kk,M+1-kk)-xKnots(kk+1,M-kk))^2 + (yKnots(kk,M+1-kk)-yKnots(kk+1,M-kk))^2 + (zKnotsSkewDiag(kk)-zKnotsSkewDiag(kk+1))^2);
-  end
+  dxKnots = diag(xKnots); dyKnots = diag(yKnots); mainDiagDist = sum(sqrt(diff(dxKnots).^2 + diff(dyKnots).^2 + diff(zKnotsMainDiag).^2));
+  sdxKnots = xKnots(M:M-1:end-1)'; sdyKnots = yKnots(M:M-1:end-1)'; skewDiagDist = sum(sqrt(diff(sdxKnots).^2 + diff(sdyKnots).^2 + diff(zKnotsSkewDiag).^2));
+
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -277,13 +275,14 @@ function warpedArbor = calcWarpedArbor(nodes,edges,radii,surfaceMapping,voxelDim
 mappedMinPositions=surfaceMapping.mappedMinPositions; mappedMaxPositions=surfaceMapping.mappedMaxPositions;
 thisVZminmesh=surfaceMapping.thisVZminmesh; thisVZmaxmesh=surfaceMapping.thisVZmaxmesh; thisx=surfaceMapping.thisx; thisy=surfaceMapping.thisy;
 % generate correspondence points for the points on the surfaces
-[tmpymesh,tmpxmesh] = meshgrid([thisy(1):thisy(end)],[thisx(1):thisx(end)]);
-tmpminmesh = thisVZminmesh(thisx(1):thisx(end),thisy(1):thisy(end)); tmpmaxmesh = thisVZmaxmesh(thisx(1):thisx(end),thisy(1):thisy(end));
+[tmpymesh,tmpxmesh] = meshgrid([thisy(1):conformalJump:thisy(end)],[thisx(1):conformalJump:thisx(end)]);
+tmpminmesh = thisVZminmesh(thisx(1):conformalJump:thisx(end),thisy(1):conformalJump:thisy(end));
+tmpmaxmesh = thisVZmaxmesh(thisx(1):conformalJump:thisx(end),thisy(1):conformalJump:thisy(end));
 topInputPos = [tmpxmesh(:) tmpymesh(:) tmpminmesh(:)]; botInputPos = [tmpxmesh(:) tmpymesh(:) tmpmaxmesh(:)];
 topOutputPos = [mappedMinPositions(:,1) mappedMinPositions(:,2) median(tmpminmesh(:))*ones(size(mappedMinPositions,1),1)];
 botOutputPos = [mappedMaxPositions(:,1) mappedMaxPositions(:,2) median(tmpmaxmesh(:))*ones(size(mappedMaxPositions,1),1)];
 % use the correspondence points to calculate local transforms and use those local transforms to map points on the arbor
-nodes = localLSregistration(nodes,topInputPos,botInputPos,topOutputPos,botOutputPos);
+nodes = localLSregistration(nodes,topInputPos,botInputPos,topOutputPos,botOutputPos,conformalJump);
 % switch to physical dimensions (in um)
 nodes(:,1) = nodes(:,1)*voxelDim(1); nodes(:,2) = nodes(:,2)*voxelDim(2); nodes(:,3) = nodes(:,3)*voxelDim(3);
 % calculate median band positions in z
@@ -293,30 +292,38 @@ warpedArbor.nodes=nodes; warpedArbor.edges=edges; warpedArbor.radii=radii;
 warpedArbor.medVZmin=medVZminmesh; warpedArbor.medVZmax=medVZmaxmesh;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function nodes = localLSregistration(nodes,topInputPos,botInputPos,topOutputPos,botOutputPos)
-window=5; % neighborhood size for the LS registration
-maxOrder=2; % maximum multinomial order in xy
+function nodes = localLSregistration(nodes,topInputPos,botInputPos,topOutputPos,botOutputPos,conformalJump)
 % aX^2+bXY+cY^2+dX+eY+f+gZX^2+hXYZ+iZY^2+jXZ+kYZ+lZ -> at least 12 equations needed
+maxOrder=2; % maximum multinomial order in xy
 for kk = 1:size(nodes,1)
-  % fetch the band points around an xy neighborhood for each point on the arbor
-  xpos = nodes(kk,1); ypos = nodes(kk,2); zpos = nodes(kk,3);
-  lx = round(xpos-window); ux = round(xpos+window); ly = round(ypos-window); uy = round(ypos+window);
-  thisInT = topInputPos(topInputPos(:,1)>=lx & topInputPos(:,1)<=ux & topInputPos(:,2)>=ly & topInputPos(:,2)<=uy,:);
-  thisInB = botInputPos(botInputPos(:,1)>=lx & botInputPos(:,1)<=ux & botInputPos(:,2)>=ly & botInputPos(:,2)<=uy,:);
-  thisIn = [thisInT; thisInB];
-  thisOutT = topOutputPos(topInputPos(:,1)>=lx & topInputPos(:,1)<=ux & topInputPos(:,2)>=ly & topInputPos(:,2)<=uy,:);
-  thisOutB = botOutputPos(botInputPos(:,1)>=lx & botInputPos(:,1)<=ux & botInputPos(:,2)>=ly & botInputPos(:,2)<=uy,:);
-  thisOut = [thisOutT; thisOutB];
-  % convert band correspondence data into local coordinates
-  xShift = mean(thisIn(:,1)); yShift = mean(thisIn(:,2));
-  thisIn(:,1) = thisIn(:,1)-xShift; thisOut(:,1) = thisOut(:,1)-xShift;
-  thisIn(:,2) = thisIn(:,2)-yShift; thisOut(:,2) = thisOut(:,2)-yShift;
-  % calculate the transformation that maps the band points to their correspondences
-  quadData = [thisIn(:,1:2) ones(size(thisIn,1),1)];
-  for totalOrd = 2:maxOrder; for ord = 0:totalOrd; % slightly more general - it can handle higher lateral polynomial orders
-    quadData = [(thisIn(:,1).^ord).*(thisIn(:,2).^(totalOrd-ord)) quadData];
-  end; end;
-  quadData = [quadData kron(thisIn(:,3),ones(1,size(quadData,2))).*quadData];
+  window=conformalJump; % neighborhood extent for the LS registration
+  % gradually increase 'window' to avoid an underdetermined system
+  while(true)
+    % fetch the band points around an xy neighborhood for each point on the arbor
+    xpos = nodes(kk,1); ypos = nodes(kk,2); zpos = nodes(kk,3);
+    lx = round(xpos-window); ux = round(xpos+window); ly = round(ypos-window); uy = round(ypos+window);
+    thisInT = topInputPos(topInputPos(:,1)>=lx & topInputPos(:,1)<=ux & topInputPos(:,2)>=ly & topInputPos(:,2)<=uy,:);
+    thisInB = botInputPos(botInputPos(:,1)>=lx & botInputPos(:,1)<=ux & botInputPos(:,2)>=ly & botInputPos(:,2)<=uy,:);
+    thisIn = [thisInT; thisInB];
+    thisOutT = topOutputPos(topInputPos(:,1)>=lx & topInputPos(:,1)<=ux & topInputPos(:,2)>=ly & topInputPos(:,2)<=uy,:);
+    thisOutB = botOutputPos(botInputPos(:,1)>=lx & botInputPos(:,1)<=ux & botInputPos(:,2)>=ly & botInputPos(:,2)<=uy,:);
+    thisOut = [thisOutT; thisOutB];
+    % convert band correspondence data into local coordinates
+    xShift = mean(thisIn(:,1)); yShift = mean(thisIn(:,2));
+    thisIn(:,1) = thisIn(:,1)-xShift; thisOut(:,1) = thisOut(:,1)-xShift;
+    thisIn(:,2) = thisIn(:,2)-yShift; thisOut(:,2) = thisOut(:,2)-yShift;
+    % calculate the transformation that maps the band points to their correspondences
+    quadData = [thisIn(:,1:2) ones(size(thisIn,1),1)];
+    for totalOrd = 2:maxOrder; for ord = 0:totalOrd; % slightly more general - it can handle higher lateral polynomial orders
+      quadData = [(thisIn(:,1).^ord).*(thisIn(:,2).^(totalOrd-ord)) quadData];
+    end; end;
+    quadData = [quadData kron(thisIn(:,3),ones(1,size(quadData,2))).*quadData];
+    if rank(quadData)<12
+      window=window+1;
+    else
+      break;
+    end
+  end
   transformMat = lscov(quadData,thisOut);
   shiftedNode = [xpos-xShift ypos-yShift];
   quadData = [shiftedNode(1:2) 1];
@@ -445,10 +452,10 @@ bins = [-zExt/2:zExt/gridPointCount:zExt/2-zExt/gridPointCount];
 figure;
 Xup = gridPointCount*zRes/2; Xlow = -Xup;
 h=plot(bins*(gridPointCount*zRes/zExt),zDist); set(h,'LineWidth',2); xlim([[Xlow Xup]]);
-ylabel('Dendritic length distributions','FontSize',14); xlabel(strcat('depth in IPL (\mu','m)'),'FontSize',14);
-h = gcf; set(h,'Color','w'); set(gca,'box','off');
+ylabel('Dendritic length distribution','FontSize',14); xlabel(strcat('depth in IPL (\mu','m)'),'FontSize',14);
+h = gcf; pixelsPerInch = 70; set(h,'Color','w','PaperUnits', 'inches', 'PaperPosition', [0 0 700 400]/pixelsPerInch); set(gca,'box','off');
 % save the profile and close the plot;
-saveas(gcf,strcat(saveName,'_zProfile.png'),'png'); close;
+print(gcf,'-dpng',sprintf('-r%d',pixelsPerInch), strcat(saveName,'_zProfile.png')); close;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function interpolated = gridder1d(zSamples,density,n,Wz,betaZ)
@@ -501,25 +508,26 @@ f=f(zoffset+1:zoffset+u);
 end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function labelDendrogram(thisLinkage,labels,saveName)
+function labelDendrogram(thisLinkage,labels,colorLabels,saveName)
 figure;h = dendrogram(thisLinkage,0);
 % cell IDs in the dendrogram leaves
 curLabels=get(gca,'XTickLabel'); for kk = 1:size(curLabels,1); numCurLabels(kk) = str2num(curLabels(kk,:)); end;
 % label leaves
 for kk = 1:size(curLabels,1);
-  x = kk-0.5; y = -0.01; t=text(x,y,labels{numCurLabels(kk)}); %,'Color',colorLabels{kk});
-  set(t,'HorizontalAlignment','right','VerticalAlignment','top','Rotation',90);
+  x = kk; y = -0.01; t=text(x,y,labels{numCurLabels(kk)},'Color',colorLabels{numCurLabels(kk)});
+  set(t,'HorizontalAlignment','right','VerticalAlignment','top'); %,'Rotation',90);
 end
 %Prettier
 set(gca,'XLim',[0,size(thisLinkage,1)+2],'YLim',[0,1.05], 'XTickLabel', {}, 'XTick',[], 'YTickLabel', {'0','0.2','0.4','0.6','0.8','1'}, 'YTick',[0:0.2:1]);
 for kk = 1:numel(h); set(h(kk),'Color','black','LineWidth',2); end;
-set(gcf,'Color','w');
-saveas(gcf,strcat(saveName,'_dendrogram'),'png'); close;
+pixelsPerInch = 70; set(gcf,'Color','w','PaperUnits', 'inches', 'PaperPosition',[100 100 4000 800]/pixelsPerInch); set(gca,'box','off');
+print(gcf,'-dpng',sprintf('-r%d',pixelsPerInch), strcat(saveName,'_dendrogram.png')); close;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function labels=readLabels
 % cell types of the 363 cells of the dataset as presented in the paper
 labels=cell(364,1); labels{364}='N';
+colorLabels=cell(364,1); colorLabels{364}='r';
 AA=[84:93 127 304 355]; BB=[94:99 142 153 170 186 201 209 240 246 259 264 285 290 316 318 321 328 354];
 CC=[100:105 125 126 130 136 137 149 150 151 172 173 195 205 206 214 215 228 235 237 238 293 299 305 315 319 342 344 345 346 347 348 356];
 DD=[65:83 112 119 131 133 145 154 156 157 162 163 164 168 169 171 177 178 181 185 190 191 194 197 198 202 210 218];
@@ -602,44 +610,44 @@ function [AR,RI,MI,HI,rowSplits,columnSplits,typeConfusions] = reportConfusionsA
 % See L. Hubert and P. Arabie (1985) "Comparing Partitions" Journal of
 % Classification 2:193-218
 
-%(C) David Corney (2000)                D.Corney@cs.ucl.ac.uk
+%(C) David Corney (2000) D.Corney@cs.ucl.ac.uk
 
 if nargin < 2 | min(size(c1)) > 1 | min(size(c2)) > 1
    error('RandIndex: Requires two vector arguments')
    return
 end
 
-C=Contingency(c1,c2);   %form contingency matrix
+C=Contingency(c1,c2); %form contingency matrix
 
 n=sum(sum(C));
-nis=sum(sum(C,2).^2);           %sum of squares of sums of rows
-njs=sum(sum(C,1).^2);           %sum of squares of sums of columns
+nis=sum(sum(C,2).^2); %sum of squares of sums of rows
+njs=sum(sum(C,1).^2); %sum of squares of sums of columns
 
-t1=nchoosek(n,2);               %total number of pairs of entities
-t2=sum(sum(C.^2));      %sum over rows & columnns of nij^2
+t1=nchoosek(n,2); %total number of pairs of entities
+t2=sum(sum(C.^2)); %sum over rows & columnns of nij^2
 t3=.5*(nis+njs);
 
 %Expected index (for adjustment)
 nc=(n*(n^2+1)-(n+1)*nis-(n+1)*njs+2*(nis*njs)/n)/(2*(n-1));
 
-A=t1+t2-t3;             %no. agreements
-D=  -t2+t3;             %no. disagreements
+A=t1+t2-t3; %no. agreements
+D= -t2+t3; %no. disagreements
 
 if t1==nc
-   AR=0;                        %avoid division by zero; if k=1, define Rand = 0
+   AR=0; %avoid division by zero; if k=1, define Rand = 0
 else
-   AR=(A-nc)/(t1-nc);           %adjusted Rand - Hubert & Arabie 1985
+   AR=(A-nc)/(t1-nc); %adjusted Rand - Hubert & Arabie 1985
 end
 
-RI=A/t1;                        %Rand 1971              %Probability of agreement
-MI=D/t1;                        %Mirkin 1970    %p(disagreement)
-HI=(A-D)/t1;    %Hubert 1977    %p(agree)-p(disagree)
+RI=A/t1; %Rand 1971 %Probability of agreement
+MI=D/t1; %Mirkin 1970 %p(disagreement)
+HI=(A-D)/t1; %Hubert 1977 %p(agree)-p(disagree)
 
 tmp1=sum(C>0,1); tmp2=sum(C>0,2);
 rowSplits = sum(tmp1)-nnz(tmp1); columnSplits = sum(tmp2)-nnz(tmp2);
 typeConfusions = rowSplits+columnSplits; % number of splits in both directions!
 %for kk=1:size(C,2)
-%   [maxi,pos]=max(C(:,kk)); if pos>kk; tmp = C(pos,:); C(pos,:) = C(kk,:); C(kk,:) = tmp; end;
+% [maxi,pos]=max(C(:,kk)); if pos>kk; tmp = C(pos,:); C(pos,:) = C(kk,:); C(kk,:) = tmp; end;
 %end
 %tmp = diag(diag(C)); tmp = [tmp; zeros(size(C,1)-size(tmp,1),size(tmp,2))]; tmp = [tmp zeros(size(tmp,1), size(C,2)-size(tmp,2))]; tmp = C-tmp;
 %typeConfusions = nnz(tmp);
@@ -656,6 +664,106 @@ Cont=zeros(max(Mem1),max(Mem2));
 for i = 1:length(Mem1);
    Cont(Mem1(i),Mem2(i))=Cont(Mem1(i),Mem2(i))+1;
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function L = elinkage(y, alpha)
+%ELINKAGE Minimum energy clustering for Matlab
+%
+% y data matrix with observations in rows,
+% or distances produced by pdist
+% alpha power of Euclidean distance, 0<alpha<=2
+% default alpha=1
+%
+% Agglomerative hierarchical clustering by minimum
+% energy method, using L-W recursion, for Matlab 7.0.
+% See the contributed package "energy" for R, and its
+% reference manual, for details:
+% http://cran.us.r-project.org/src/contrib/PACKAGES.html
+% http://cran.us.r-project.org/doc/packages/energy.pdf
+% Reference:
+% Szekely, G.J. and Rizzo, M.L. (2005), Hierarchical
+% clustering via joint between-within distances:
+% extending Ward's minimum variance method, Journal
+% of Classification, Vol. 22 (2).
+% Email:
+% gabors @ bgnet.bgsu.edu, mrizzo @ bgnet.bgsu.edu
+% Software developed and maintained by:
+% Maria Rizzo, mrizzo @ bgnet.bgsu.edu
+% Matlab version 1.0.0 created: 12-Dec-2005
+% License: GPL 2.0 or later
+
+%%% initialization
+if nargin < 2
+    alpha = 1.0;
+end;
+
+%%% if n==1, y is distance, output from pdist()
+[n, d] = size(y); %n obs. in rows
+if n == 1 %distances in y
+    ed = 2 .* squareform(y) .^alpha;
+else %data matrix
+    ed = 2 .* (squareform(pdist(y)).^alpha);
+end;
+n = length(ed);
+clsizes = ones(1, n); %cluster sizes
+clindex = 1:n; %cluster indices
+L = zeros(n-1, 3); %linkage return value
+nclus = n;
+
+for merges = 1:(n-2);
+
+    %find clusters at minimum e-distance
+    b = ones(nclus, 1) .* (ed(1,2) + 1);
+    B = ed + diag(b);
+    [colmins, mini] = min(B);
+    [minmin, j] = min(colmins);
+    i = mini(j);
+    
+    %cluster j will be merged into i
+    %update the linkage matrix
+    L(merges, 1) = clindex(i);
+    L(merges, 2) = clindex(j);
+    L(merges, 3) = ed(i, j);
+    
+    %update the cluster distances
+    m1 = clsizes(i);
+    m2 = clsizes(j);
+    m12 = m1 + m2;
+    
+    for k = 1:nclus;
+     if (k ~= i && k ~= j);	
+     m3 = clsizes(k);
+            m = m12 + m3;
+            ed(i, k) = ((m1+m3)*ed(i,k) + (m2+m3)*ed(j,k) - m3*ed(i,j))/m;
+            ed(k, i) = ed(i, k);
+        end;
+    end;
+    
+   
+    %update cluster data, merge j into i and delete j
+    ed(j, :) = [];
+    ed(:, j) = [];
+    clsizes(i) = m12;
+    clsizes(j) = [];
+    clindex(i) = n + merges;
+    clindex(j) = [];
+    nclus = n - merges;
+    
+    %order the leaves so that ht incr left to right
+    if L(merges, 1) > L(merges, 2);
+        ij = L(merges, 1);
+        L(merges, 1) = L(merges, 2);
+        L(merges, 2) = ij;
+    end;
+end;
+
+%handle the final merge
+L(n-1, :) = [clindex(1), clindex(2), ed(1, 2)];
+if L(n-1, 1) > L(n-1, 2);
+    ij = L(n-1, 1);
+    L(n-1, 1) = L(n-1, 2);
+    L(n-1, 2) = ij;
+end;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function L = elinkage(y, alpha)
