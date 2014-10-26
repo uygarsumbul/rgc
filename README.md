@@ -20,6 +20,7 @@ starburst amacrine surfaces given an enhanced stack. They include a basic machin
 maximum-surface detection routine.
 
 ---------------------- Instructions on rgcAnalyzer.m ----------------------
+
 This file performs various tasks. The comments in the first function (rgcAnalyzer) explain these tasks. The file expects 5 inputs from
 the user: arborFileName, OnSACFilename, OffSACFilename, voxelRes, conformalJump.
 
@@ -37,7 +38,8 @@ conformalJump: (positive integer, typically 1, 2, 3) the length of the edge of t
 "1" performs exact calculation, however it can be slow. The interpolation introduced by using "2" or "3" is usually minimal, and the
 mapping runs faster.
 
-Instructions for generating surface annotation files in FIJI:
+---------------------- Instructions for generating surface annotation files in FIJI ----------------------
+
 - Open the three-dimensional image stack containing the starburst cell staining in FIJI.
 - Image>Stacks>Reslice. From the menu, choose "1 pixel output spacing", "start at top", "avoid interpolation."
 - Choose the point tool from the main toolbar. Double click on the point tool to configure: auto-measure, label points.
