@@ -12,7 +12,7 @@ The findings in Krieger et al, 2017 (http://journals.plos.org/plosone/article?id
 - Ka and Kb are the same sustained On alpha type in Krieger et al.
 - W7a and CB2 are the same transient Off alpha type in Krieger et al.
 - W7b is the sustained Off alpha type in Krieger et al.
-- X may be the transient On alpha type in Krieger et al.
+- X is the transient On alpha type in Krieger et al.
 
 These findings seem to further emphasize the role of one-dimensional depth profiles. Please note that this update should be considered as the current best guess based on published literature, and is not definitive.
 
