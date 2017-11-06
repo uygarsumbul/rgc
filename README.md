@@ -5,13 +5,12 @@ U. Sümbül et al., ``A genetic and computational approach to structurally class
 
 These files are authored and maintained by Uygar Sümbül unless otherwise noted. 
 
-Update on November 6, 2017 : The findings in Krieger et al, 2017 (http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0180091) appear to suggest the following updates and correspondences to our classification of retinal ganglion cells:
-
+*Update on November 6, 2017:* The findings in Krieger et al, 2017 (http://journals.plos.org/plosone/article?id=10.1371/journal.pone.0180091) appear to suggest the following updates and correspondences to our classification of retinal ganglion cells:  
 - Ka and Kb are the same sustained On alpha type in Krieger et al.
 - W7a and CB2 are the same transient Off alpha type in Krieger et al.
 - W7b is the sustained Off alpha type in Krieger et al.
-- X is the transient On alpha type in Krieger et al.\\
-These findings seem to further emphasize the role of one-dimensional depth profiles. Please note that this update should be considered as the current best guess based on published literature, and is not definitive. // End of Update on November 6, 2017
+- X is the transient On alpha type in Krieger et al.  
+These findings seem to further emphasize the role of one-dimensional depth profiles. Please note that this update should be considered as the current best guess based on published literature, and is not definitive. *// End of Update on November 6, 2017*
 
 rgcAnalyzer.m -- This file includes various Matlab functions that obtain a registered representation of a retinal ganglion cell starting
 from its arbor trace and starburst amacrine surface annotations, performs hierarchical clustering, and the cutting of the hierarchical
